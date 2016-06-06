@@ -73,17 +73,17 @@ func (sem *Semaphore) Wait() error {
 		return nil
 	}
 
-	atomic.AddUint64((*uint64)(&isem.Nwaiters), 1)
+	atomic.AddUintptr((*uintptr)(unsafe.Pointer(&isem.Nwaiters)), 1)
 
 	for {
 		//err = do_futex_wait(isem);
 		if _, _, err := unix.Syscall6(unix.SYS_FUTEX, uintptr(unsafe.Pointer(&isem.Value)), uintptr(C.FUTEX_WAIT), 0, 0, 0, 0); err != 0 && err != syscall.EWOULDBLOCK {
-			atomic.AddUint64((*uint64)(&isem.Nwaiters), ^uint64(0))
+			atomic.AddUintptr((*uintptr)(unsafe.Pointer(&isem.Nwaiters)), ^uintptr(0))
 			return err
 		}
 
 		if atomicDecrementIfPositive((*uint32)(&isem.Value)) > 0 {
-			atomic.AddUint64((*uint64)(&isem.Nwaiters), ^uint64(0))
+			atomic.AddUintptr((*uintptr)(unsafe.Pointer(&isem.Nwaiters)), ^uintptr(0))
 			return nil
 		}
 	}
@@ -118,7 +118,7 @@ func (sem *Semaphore) Post() error {
 
 	// atomic_full_barrier ();
 
-	if atomic.LoadUint64((*uint64)(&isem.Nwaiters)) <= 0 {
+	if atomic.LoadUintptr((*uintptr)(unsafe.Pointer(&isem.Nwaiters))) <= 0 {
 		return nil
 	}
 

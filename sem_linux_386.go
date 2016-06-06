@@ -10,12 +10,12 @@ import (
 	"unsafe"
 )
 
-type Semaphore [32]byte
+type Semaphore [16]byte
 
 type newSem struct {
 	Value		uint32
 	Private		int32
-	Nwaiters	uint64
+	Nwaiters	uint32
 }
 
 func New(value uint) (*Semaphore, error) {
