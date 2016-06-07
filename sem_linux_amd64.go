@@ -13,9 +13,9 @@ import (
 type Semaphore [32]byte
 
 type newSem struct {
-	Value		uint32
-	Private		int32
-	Nwaiters	uint64
+	Value    uint32
+	Private  int32
+	Nwaiters uint64
 }
 
 func New(value uint) (*Semaphore, error) {
@@ -43,17 +43,17 @@ func (sem *Semaphore) Wait() error {
 		return nil
 	}
 
-	atomic.AddUintptr((*uintptr)(unsafe.Pointer(&isem.Nwaiters)), 1)
+	atomic.AddUint64(&isem.Nwaiters, 1)
 
 	for {
 
 		if _, _, err := unix.Syscall6(unix.SYS_FUTEX, uintptr(unsafe.Pointer(&isem.Value)), uintptr(0x0), 0, 0, 0, 0); err != 0 && err != syscall.EWOULDBLOCK {
-			atomic.AddUintptr((*uintptr)(unsafe.Pointer(&isem.Nwaiters)), ^uintptr(0))
+			atomic.AddUint64(&isem.Nwaiters, ^uint64(0))
 			return err
 		}
 
 		if atomicDecrementIfPositive((*uint32)(&isem.Value)) > 0 {
-			atomic.AddUintptr((*uintptr)(unsafe.Pointer(&isem.Nwaiters)), ^uintptr(0))
+			atomic.AddUint64(&isem.Nwaiters, ^uint64(0))
 			return nil
 		}
 	}
@@ -84,7 +84,7 @@ func (sem *Semaphore) Post() error {
 		}
 	}
 
-	if atomic.LoadUintptr((*uintptr)(unsafe.Pointer(&isem.Nwaiters))) <= 0 {
+	if atomic.LoadUint64(&isem.Nwaiters) <= 0 {
 		return nil
 	}
 
