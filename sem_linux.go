@@ -37,9 +37,10 @@ struct new_sem
 import "C"
 
 import (
-	"golang.org/x/sys/unix"
 	"sync/atomic"
 	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
 
 type Semaphore C.sem_t

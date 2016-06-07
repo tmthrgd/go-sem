@@ -4,9 +4,10 @@
 package sem
 
 import (
-	"golang.org/x/sys/unix"
 	"sync/atomic"
 	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
 
 type Semaphore [32]byte
