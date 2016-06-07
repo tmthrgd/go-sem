@@ -6,7 +6,6 @@ package sem
 import (
 	"golang.org/x/sys/unix"
 	"sync/atomic"
-	"syscall"
 	"unsafe"
 )
 
@@ -47,7 +46,7 @@ func (sem *Semaphore) Wait() error {
 
 	for {
 
-		if _, _, err := unix.Syscall6(unix.SYS_FUTEX, uintptr(unsafe.Pointer(&isem.Value)), uintptr(0x0), 0, 0, 0, 0); err != 0 && err != syscall.EWOULDBLOCK {
+		if _, _, err := unix.Syscall6(unix.SYS_FUTEX, uintptr(unsafe.Pointer(&isem.Value)), uintptr(0x0), 0, 0, 0, 0); err != 0 && err != unix.EWOULDBLOCK {
 			atomic.AddUint32(&isem.NWaiters, ^uint32(0))
 			return err
 		}
@@ -66,7 +65,7 @@ func (sem *Semaphore) TryWait() error {
 		return nil
 	}
 
-	return syscall.EAGAIN
+	return unix.EAGAIN
 }
 
 func (sem *Semaphore) Post() error {
@@ -76,7 +75,7 @@ func (sem *Semaphore) Post() error {
 		cur := atomic.LoadUint32(&isem.Value)
 
 		if cur == 0x7fffffff {
-			return syscall.EOVERFLOW
+			return unix.EOVERFLOW
 		}
 
 		if atomic.CompareAndSwapUint32(&isem.Value, cur, cur+1) {
@@ -97,7 +96,7 @@ func (sem *Semaphore) Post() error {
 
 func (sem *Semaphore) Init(value uint) error {
 	if value > 0x7fffffff {
-		return syscall.EINVAL
+		return unix.EINVAL
 	}
 
 	isem := (*newSem)(unsafe.Pointer(sem))

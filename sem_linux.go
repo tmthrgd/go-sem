@@ -39,7 +39,6 @@ import "C"
 import (
 	"golang.org/x/sys/unix"
 	"sync/atomic"
-	"syscall"
 	"unsafe"
 )
 
@@ -78,7 +77,7 @@ func (sem *Semaphore) Wait() error {
 
 	for {
 		//err = do_futex_wait(isem);
-		if _, _, err := unix.Syscall6(unix.SYS_FUTEX, uintptr(unsafe.Pointer(&isem.Value)), uintptr(C.FUTEX_WAIT), 0, 0, 0, 0); err != 0 && err != syscall.EWOULDBLOCK {
+		if _, _, err := unix.Syscall6(unix.SYS_FUTEX, uintptr(unsafe.Pointer(&isem.Value)), uintptr(C.FUTEX_WAIT), 0, 0, 0, 0); err != 0 && err != unix.EWOULDBLOCK {
 			atomic.AddUintptr((*uintptr)(unsafe.Pointer(&isem.NWaiters)), ^uintptr(0))
 			return err
 		}
@@ -98,7 +97,7 @@ func (sem *Semaphore) TryWait() error {
 		return nil
 	}
 
-	return syscall.EAGAIN
+	return unix.EAGAIN
 }
 
 // This mirrors __new_sem_post from glibc-2.17/nptl/sysdeps/unix/sysv/linux/sem_post.c
@@ -109,7 +108,7 @@ func (sem *Semaphore) Post() error {
 		cur := atomic.LoadUint32((*uint32)(&isem.Value))
 
 		if cur == C.SEM_VALUE_MAX {
-			return syscall.EOVERFLOW
+			return unix.EOVERFLOW
 		}
 
 		if atomic.CompareAndSwapUint32((*uint32)(&isem.Value), cur, cur+1) {
@@ -133,7 +132,7 @@ func (sem *Semaphore) Post() error {
 // This mirrors __new_sem_init from glibc-2.17/nptl/sem_init.c
 func (sem *Semaphore) Init(value uint) error {
 	if value > C.SEM_VALUE_MAX {
-		return syscall.EINVAL
+		return unix.EINVAL
 	}
 
 	isem := (*newSem)(unsafe.Pointer(sem))
