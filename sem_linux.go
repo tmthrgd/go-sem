@@ -16,7 +16,7 @@
 // License along with the GNU C Library; if not, see
 // <http://www.gnu.org/licenses/>.
 
-// +build ignore
+// +build linux,!386,!amd64
 
 package sem
 
@@ -26,11 +26,12 @@ package sem
 #include <bits/local_lim.h> // For SEM_VALUE_MAX
 
 // This is pulled from glibc-2.17/nptl/sysdeps/unix/sysv/linux/internaltypes.h
+// The case of field names has been changed to be consistent with cgo -godefs
 struct new_sem
 {
-	unsigned int value;
-	int private;
-	unsigned long int nwaiters;
+	unsigned int Value;
+	int Private;
+	unsigned long int NWaiters;
 };
 */
 import "C"
@@ -73,17 +74,17 @@ func (sem *Semaphore) Wait() error {
 		return nil
 	}
 
-	atomic.AddUintptr((*uintptr)(unsafe.Pointer(&isem.Nwaiters)), 1)
+	atomic.AddUintptr((*uintptr)(unsafe.Pointer(&isem.NWaiters)), 1)
 
 	for {
 		//err = do_futex_wait(isem);
 		if _, _, err := unix.Syscall6(unix.SYS_FUTEX, uintptr(unsafe.Pointer(&isem.Value)), uintptr(C.FUTEX_WAIT), 0, 0, 0, 0); err != 0 && err != syscall.EWOULDBLOCK {
-			atomic.AddUintptr((*uintptr)(unsafe.Pointer(&isem.Nwaiters)), ^uintptr(0))
+			atomic.AddUintptr((*uintptr)(unsafe.Pointer(&isem.NWaiters)), ^uintptr(0))
 			return err
 		}
 
 		if atomicDecrementIfPositive((*uint32)(&isem.Value)) > 0 {
-			atomic.AddUintptr((*uintptr)(unsafe.Pointer(&isem.Nwaiters)), ^uintptr(0))
+			atomic.AddUintptr((*uintptr)(unsafe.Pointer(&isem.NWaiters)), ^uintptr(0))
 			return nil
 		}
 	}
@@ -118,7 +119,7 @@ func (sem *Semaphore) Post() error {
 
 	// atomic_full_barrier ();
 
-	if atomic.LoadUintptr((*uintptr)(unsafe.Pointer(&isem.Nwaiters))) <= 0 {
+	if atomic.LoadUintptr((*uintptr)(unsafe.Pointer(&isem.NWaiters))) <= 0 {
 		return nil
 	}
 
@@ -138,7 +139,7 @@ func (sem *Semaphore) Init(value uint) error {
 	isem := (*newSem)(unsafe.Pointer(sem))
 	isem.Value = C.uint(value)
 	isem.Private = 0
-	isem.Nwaiters = 0
+	isem.NWaiters = 0
 
 	return nil
 }
