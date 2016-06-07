@@ -39,7 +39,7 @@ func atomicDecrementIfPositive(mem *uint32) uint32 {
 func (sem *Semaphore) Wait() error {
 	isem := (*newSem)(unsafe.Pointer(sem))
 
-	if atomicDecrementIfPositive((*uint32)(&isem.Value)) > 0 {
+	if atomicDecrementIfPositive(&isem.Value) > 0 {
 		return nil
 	}
 
@@ -52,7 +52,7 @@ func (sem *Semaphore) Wait() error {
 			return err
 		}
 
-		if atomicDecrementIfPositive((*uint32)(&isem.Value)) > 0 {
+		if atomicDecrementIfPositive(&isem.Value) > 0 {
 			atomic.AddUint32(&isem.NWaiters, ^uint32(0))
 			return nil
 		}
@@ -62,7 +62,7 @@ func (sem *Semaphore) Wait() error {
 func (sem *Semaphore) TryWait() error {
 	isem := (*newSem)(unsafe.Pointer(sem))
 
-	if atomicDecrementIfPositive((*uint32)(&isem.Value)) > 0 {
+	if atomicDecrementIfPositive(&isem.Value) > 0 {
 		return nil
 	}
 
@@ -73,13 +73,13 @@ func (sem *Semaphore) Post() error {
 	isem := (*newSem)(unsafe.Pointer(sem))
 
 	for {
-		cur := atomic.LoadUint32((*uint32)(&isem.Value))
+		cur := atomic.LoadUint32(&isem.Value)
 
 		if cur == 0x7fffffff {
 			return syscall.EOVERFLOW
 		}
 
-		if atomic.CompareAndSwapUint32((*uint32)(&isem.Value), cur, cur+1) {
+		if atomic.CompareAndSwapUint32(&isem.Value, cur, cur+1) {
 			break
 		}
 	}
